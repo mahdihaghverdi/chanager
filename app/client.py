@@ -1,6 +1,7 @@
 import asyncio
 import json
 import socket
+import subprocess
 import sys
 
 import psutil
@@ -104,6 +105,10 @@ async def command_manager(connection: socket.socket, loop):
                     ]
                 )
                 await loop.sock_sendall(connection, to_send.encode())
+
+            case Commands.processes:
+                res = subprocess.getoutput('ps uaxw | wc -l')
+                await loop.sock_sendall(connection, f'{res}'.encode())
 
 
 async def main():
