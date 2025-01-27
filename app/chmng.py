@@ -21,7 +21,8 @@ if settings.LOGLEVEL == LogLevels.INFO:
             "<g>{time:YYYY-MMM-DD HH:mm:ss.SSS}</g> "
             "| <c><b>{level:<10}</b></c> "
             "| <b>{message}</b>"
-        )
+        ),
+        level='INFO'
     )
 else:
     logger.add(
@@ -32,7 +33,8 @@ else:
             "| <c><b>{level:<10}</b></c> "
             "| <y>{file}</y>:<y>{function}</y>:<y>{line}</y> "
             "- <b>{message}</b>"
-        )
+        ),
+        level='DEBUG'
     )
 
 clients: dict[uuid.UUID, "Client"] = {}
@@ -87,6 +89,7 @@ class Client:
                         self.retries += 1
                         self.secs = floor(self.secs * 1.5)
                     else:
+                        logger.info(f'Connection to {(self.ip, self.cls_port)} reestablished')
                         self.retries = 1
                         self.secs = 2
                         break
@@ -138,7 +141,7 @@ async def admin_commands(connection: socket.socket, loop):
 
 
 async def listen_for_registration(server_socket, loop):
-    logger.debug("Chanager is listening for registrations...")
+    logger.info("Chanager is listening for registrations...")
     while True:
         connection, address = await loop.sock_accept(server_socket)
         connection.setblocking(False)

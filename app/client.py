@@ -5,10 +5,34 @@ import sys
 
 from loguru import logger
 
-from core.config import settings
+from core.config import LogLevels, settings
 
 chanager = None
 self_id = None
+
+if settings.LOGLEVEL == LogLevels.INFO:
+    logger.add(
+        sys.stdout,
+        colorize=True,
+        format=(
+            "<g>{time:YYYY-MMM-DD HH:mm:ss.SSS}</g> "
+            "| <c><b>{level:<10}</b></c> "
+            "| <b>{message}</b>"
+        ),
+        level='INFO'
+    )
+else:
+    logger.add(
+        sys.stdout,
+        colorize=True,
+        format=(
+            "<g>{time:YYYY-MMM-DD HH:mm:ss.SSS}</g> "
+            "| <c><b>{level:<10}</b></c> "
+            "| <y>{file}</y>:<y>{function}</y>:<y>{line}</y> "
+            "- <b>{message}</b>"
+        ),
+        level='DEBUG'
+    )
 
 
 class Chanager:
@@ -20,6 +44,7 @@ class Chanager:
 
 
 async def register(loop):
+    logger.info('Sending registry request to Chanager...')
     global chanager, self_id
 
     # create register
@@ -28,8 +53,10 @@ async def register(loop):
     register_sock.setblocking(False)
 
     # connect
+    logger.debug(f'Try connecting to {(settings.CHANAGER_IP, settings.RLS_PORT)}')
     await loop.sock_connect(register_sock, (settings.CHANAGER_IP, settings.RLS_PORT))
 
+    logger.debug('Sending profile data...')
     # send data
     await loop.sock_sendall(
         register_sock,
@@ -39,11 +66,13 @@ async def register(loop):
     )
 
     # get data
+    logger.debug('Getting needed data...')
     chanager_raw_data = (await loop.sock_recv(register_sock, 1024)).decode().strip()
     chanager_data = json.loads(chanager_raw_data)
     self_id = chanager_data["id"]
     chanager = Chanager(als_port=chanager_data["als_port"])
     logger.debug(f"{chanager=}")
+    logger.info('Registration complete.')
 
     # shutdown
     register_sock.shutdown(socket.SHUT_RDWR)
