@@ -3,13 +3,16 @@ import json
 import socket
 import sys
 
+import psutil
 from loguru import logger
 
+from core.commands import Commands
 from core.config import LogLevels, settings
 
 chanager = None
 self_id = None
 
+logger.remove()
 if settings.LOGLEVEL == LogLevels.INFO:
     logger.add(
         sys.stdout,
@@ -17,7 +20,7 @@ if settings.LOGLEVEL == LogLevels.INFO:
         format=(
             "<g>{time:YYYY-MMM-DD HH:mm:ss.SSS}</g> "
             "| <c><b>{level:<10}</b></c> "
-            "| <b>{message}</b>"
+            "| <bold>{message}</bold>"
         ),
         level='INFO'
     )
@@ -29,7 +32,7 @@ else:
             "<g>{time:YYYY-MMM-DD HH:mm:ss.SSS}</g> "
             "| <c><b>{level:<10}</b></c> "
             "| <y>{file}</y>:<y>{function}</y>:<y>{line}</y> "
-            "- <b>{message}</b>"
+            "- <bold>{message}</bold>"
         ),
         level='DEBUG'
     )
@@ -80,8 +83,27 @@ async def register(loop):
 
 async def command_manager(connection: socket.socket, loop):
     while data := await loop.sock_recv(connection, 1024):
-        logger.info(f"Chanager has sent me important message: {data.decode().strip()}")
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.001)
+        data = data.decode().strip()
+        logger.debug(f"Chanager has sent me important message: {data}")
+
+        match data:
+            case Commands.cpu:
+                res = psutil.cpu_percent(percpu=True)
+                await loop.sock_sendall(connection, f'{res}'.encode())
+
+            case Commands.memory:
+                to_mb = lambda x: f'{x // 1024 // 1024} MB'  # noqa
+
+                res = psutil.virtual_memory()
+                to_send = ', '.join(
+                    [
+                        'Total: ' + to_mb(res.total),
+                        'Available: ' + to_mb(res.available),
+                        'Usage: ' + str(res.percent) + "%"
+                    ]
+                )
+                await loop.sock_sendall(connection, to_send.encode())
 
 
 async def main():

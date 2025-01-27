@@ -2,6 +2,7 @@ import asyncio
 import json
 import socket
 import sys
+import textwrap
 import uuid
 from asyncio import AbstractEventLoop
 from math import floor
@@ -37,15 +38,14 @@ else:
         level='DEBUG'
     )
 
-clients: dict[uuid.UUID, "Client"] = {}
+clients: dict[str, "Client"] = {}
 
 
 class Client:
-    def __init__(self, id_, ip, cls_port, connection=None, name=None):
+    def __init__(self, id_, ip, cls_port, name=None):
         self.id_ = id_
         self.ip = ip
         self.cls_port = cls_port
-        self.connection = connection
         self.name = name
         self.chc: socket.socket | None = None
         self.retries = 1
@@ -55,8 +55,6 @@ class Client:
         base = f"Client<id: {self.id_}, (ip={self.ip!r}, cls_port: {self.cls_port})"
         if self.name is not None:
             base += f", name={self.name!r}>"
-        if self.connection is not None:
-            base += f", connection={self.connection}"
         else:
             base += ">"
         return base
@@ -100,7 +98,7 @@ async def register(connection: socket.socket, loop, address):
     client_data = json.loads(client_raw_data)
 
     client_uuid = uuid.uuid4()
-    clients[client_uuid] = (
+    clients[str(client_uuid)] = (
         client := Client(
             id_=client_uuid,
             ip=address[0],
@@ -118,26 +116,77 @@ async def register(connection: socket.socket, loop, address):
 
     await asyncio.sleep(settings.CHANAGER_WAIT_TO_CONNECT)
     logger.debug(f"Trying to connect to: {(client.ip, client.cls_port)}")
+
     await client.connect(loop)
     loop.create_task(client.health_check(loop))
 
 
 async def admin_commands(connection: socket.socket, loop):
+    await loop.sock_sendall(
+        connection,
+        textwrap.dedent(
+            '''\
+                        You can choose from these commands:
+
+                        list
+                        cpu ID
+                        memory ID
+                        profile ID
+                        processes ID
+                        restart ID
+                        '''
+        ).encode()
+    )
     while data := await loop.sock_recv(connection, 1024):
-        command, *id_ = data.decode().strip().split()
+        await asyncio.sleep(0.001)
+        try:
+            command, *id_ = data.decode().strip().split()
+        except Exception:  # noqa
+            continue
+
         match command:
             case Commands.list:
-                pass
+                logger.debug('`list` was chosen.')
+                await loop.sock_sendall(
+                    connection,
+                    textwrap.dedent(
+                        f'''\
+                    List of all registered clients
+                    ------------------------------
+                    
+                    {'\n'.join(f'{ind}: {key}' for ind, key in zip(map(str, range(1, len(clients) + 1)), clients))}
+                    '''
+                        ).encode()
+                    )
+
             case Commands.cpu:
-                pass
+                logger.debug('`cpu` was chosen.')
+                try:
+                    client = clients[id_[0]]
+                    await loop.sock_sendall(client.chc, b'cpu')
+                    report = (await loop.sock_recv(client.chc, 1024)).decode().strip()
+                    await loop.sock_sendall(connection, f'cpu percent: {report}'.encode())
+                except KeyError:
+                    await loop.sock_sendall(connection, b'Wrong client key!')
+
             case Commands.memory:
-                pass
+                logger.debug('`memory` was chosen.')
+                try:
+                    client = clients[id_[0]]
+                    await loop.sock_sendall(client.chc, b'memory')
+                    report = (await loop.sock_recv(client.chc, 1024)).decode().strip()
+                    await loop.sock_sendall(connection, f'memory usage: {report}'.encode())
+                except KeyError:
+                    await loop.sock_sendall(connection, b'Wrong client key!')
+
             case Commands.profile:
-                pass
+                logger.debug('`profile` was chosen.')
+
             case Commands.processes:
-                pass
+                logger.debug('`processes` was chosen.')
+
             case Commands.restart:
-                pass
+                logger.debug('`restart` was chosen.')
 
 
 async def listen_for_registration(server_socket, loop):

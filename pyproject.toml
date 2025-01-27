@@ -9,6 +9,7 @@ readme = "README.md"
 python = "^3.12"
 pydantic-settings = "^2.7.1"
 loguru = "^0.7.3"
+psutil = "^6.1.1"
 
 
 [build-system]
