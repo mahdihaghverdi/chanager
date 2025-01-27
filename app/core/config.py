@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     # ports
     RLS_PORT: int
     ALS_PORT: int | None = None
+    CMD_PORT: int
 
     # client
     CLIENT_NAME: str | None = None
