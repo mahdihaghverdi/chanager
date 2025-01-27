@@ -165,9 +165,9 @@ async def admin_commands(connection: socket.socket, loop):
                     client = clients[id_[0]]
                     await loop.sock_sendall(client.chc, b'cpu')
                     report = (await loop.sock_recv(client.chc, 1024)).decode().strip()
-                    await loop.sock_sendall(connection, f'cpu percent: {report}'.encode())
+                    await loop.sock_sendall(connection, f'CPU: {report}\n'.encode())
                 except KeyError:
-                    await loop.sock_sendall(connection, b'Wrong client key!')
+                    await loop.sock_sendall(connection, b'Wrong client key!\n')
 
             case Commands.memory:
                 logger.debug('`memory` was chosen.')
@@ -175,12 +175,17 @@ async def admin_commands(connection: socket.socket, loop):
                     client = clients[id_[0]]
                     await loop.sock_sendall(client.chc, b'memory')
                     report = (await loop.sock_recv(client.chc, 1024)).decode().strip()
-                    await loop.sock_sendall(connection, f'memory usage: {report}'.encode())
+                    await loop.sock_sendall(connection, f'Memory: {report}\n'.encode())
                 except KeyError:
-                    await loop.sock_sendall(connection, b'Wrong client key!')
+                    await loop.sock_sendall(connection, b'Wrong client key!\n')
 
             case Commands.profile:
                 logger.debug('`profile` was chosen.')
+                try:
+                    client = clients[id_[0]]
+                    await loop.sock_sendall(connection, f'Profile: {client}\n'.encode())
+                except KeyError:
+                    await loop.sock_sendall(connection, b'Wrong client key!\n')
 
             case Commands.processes:
                 logger.debug('`processes` was chosen.')
