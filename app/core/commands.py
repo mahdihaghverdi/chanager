@@ -7,4 +7,3 @@ class Commands(StrEnum):
     memory = auto()
     profile = auto()
     processes = auto()
-    restart = auto()

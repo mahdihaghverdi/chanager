@@ -186,8 +186,6 @@ async def admin_commands(connection: socket.socket, loop):
                     report = (await loop.sock_recv(client.chc, 1024)).decode().strip()
                     await loop.sock_sendall(connection, f'Running Processes: {report}\n'.encode())
 
-                case Commands.restart:
-                    logger.debug('`restart` was chosen.')
         except KeyError:
             await loop.sock_sendall(connection, b'Wrong client key!\n')
         except IndexError:
