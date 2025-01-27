@@ -1,6 +1,7 @@
 import asyncio
 import json
 import socket
+import sys
 import uuid
 from asyncio import AbstractEventLoop
 from math import floor
@@ -8,7 +9,31 @@ from math import floor
 from loguru import logger
 
 from core.commands import Commands
-from core.config import settings
+from core.config import LogLevels, settings
+
+logger.remove()
+
+if settings.LOGLEVEL == LogLevels.INFO:
+    logger.add(
+        sys.stdout,
+        colorize=True,
+        format=(
+            "<g>{time:YYYY-MMM-DD HH:mm:ss.SSS}</g> "
+            "| <c><b>{level:<10}</b></c> "
+            "| <b>{message}</b>"
+        )
+    )
+else:
+    logger.add(
+        sys.stdout,
+        colorize=True,
+        format=(
+            "<g>{time:YYYY-MMM-DD HH:mm:ss.SSS}</g> "
+            "| <c><b>{level:<10}</b></c> "
+            "| <y>{file}</y>:<y>{function}</y>:<y>{line}</y> "
+            "- <b>{message}</b>"
+        )
+    )
 
 clients: dict[uuid.UUID, "Client"] = {}
 
@@ -55,7 +80,8 @@ class Client:
                     except ConnectionRefusedError:
                         logger.warning(f"{(self.ip, self.cls_port)} is down")
                         logger.debug(
-                            f"[{self.retries}/100] Trying to reconnect to {(self.ip, self.cls_port)} after {self.secs} seconds"
+                            f"[{self.retries}/100] Trying to reconnect to "
+                            f"{(self.ip, self.cls_port)} after {self.secs} seconds"
                         )
                         await asyncio.sleep(self.secs)
                         self.retries += 1
@@ -121,7 +147,7 @@ async def listen_for_registration(server_socket, loop):
 
 
 async def listen_for_admin(server_socket, loop):
-    logger.debug("Chanager is listening for admin...")
+    logger.info("Chanager is listening for admin...")
     while True:
         connection, address = await loop.sock_accept(server_socket)
         connection.setblocking(False)
@@ -130,7 +156,9 @@ async def listen_for_admin(server_socket, loop):
 
 
 async def main():
-    logger.info(f"Chanager Server [{(settings.CHANAGER_IP, settings.RLS_PORT)}] `(Admin: {settings.CMD_PORT})`")
+    logger.info(
+        f"Chanager Server [{(settings.CHANAGER_IP, settings.RLS_PORT)}] `(Admin: {settings.CMD_PORT})`"
+    )
     rls = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     rls.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     rls.setblocking(False)
@@ -145,8 +173,9 @@ async def main():
 
     loop = asyncio.get_running_loop()
 
-    await loop.create_task(listen_for_registration(rls, loop))
-    # await loop.create_task(listen_for_admin(cmd, loop))
+    async with asyncio.TaskGroup() as task_group:
+        task_group.create_task(listen_for_registration(rls, loop))
+        task_group.create_task(listen_for_admin(cmd, loop))
 
 
 asyncio.run(main())

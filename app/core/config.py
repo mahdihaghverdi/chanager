@@ -1,10 +1,18 @@
+from enum import StrEnum, auto
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class LogLevels(StrEnum):
+    INFO = auto()
+    DEBUG = auto()
 
 
 class Settings(BaseSettings):
     CHANAGER_IP: str
     CHANAGER_WAIT_TO_CONNECT: int
     CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL: int
+    LOGLEVEL: LogLevels
 
     # ports
     RLS_PORT: int
