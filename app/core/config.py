@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     CLIENT_NAME: str | None = None
     CLIENT_CLS_PORT: int | None = None
     CLIENT_IP: str | None = None
+    CLIENT_ALERT_INTERVAL: int | None = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import random
 import socket
 import subprocess
 import sys
@@ -9,9 +10,6 @@ from loguru import logger
 
 from core.commands import Commands
 from core.config import LogLevels, settings
-
-chanager = None
-self_id = None
 
 logger.remove()
 if settings.LOGLEVEL == LogLevels.INFO:
@@ -37,6 +35,9 @@ else:
         ),
         level='DEBUG'
     )
+
+chanager = None
+self_id = None
 
 
 class Chanager:
@@ -84,11 +85,13 @@ async def register(loop):
 
 async def command_manager(connection: socket.socket, loop):
     while data := await loop.sock_recv(connection, 1024):
-        await asyncio.sleep(0.001)
         data = data.decode().strip()
-        logger.debug(f"Chanager has sent me important message: {data}")
+        logger.debug(f"Chanager: {data}")
 
         match data:
+            case Commands.health_check:
+                await asyncio.sleep(0.001)
+
             case Commands.cpu:
                 res = psutil.cpu_percent(percpu=True)
                 await loop.sock_sendall(connection, f'{res}'.encode())
@@ -109,6 +112,44 @@ async def command_manager(connection: socket.socket, loop):
             case Commands.processes:
                 res = subprocess.getoutput('ps uaxw | wc -l')
                 await loop.sock_sendall(connection, f'{res}'.encode())
+
+
+class EchoClientProtocol:
+    def __init__(self, message, on_con_lost):
+        self.message = message
+        self.on_con_lost = on_con_lost
+        self.transport = None
+
+    def connection_made(self, transport):
+        self.transport = transport
+        message = {'id': self_id, 'alert': self.message}
+        self.transport.sendto(json.dumps(message).encode())
+
+    def datagram_received(self, data, addr):  # noqa
+        logger.info('Received:', data.decode().strip(), 'from:', addr)
+
+    def error_received(self, exc):  # noqa
+        logger.exception('Error received:', exc)
+
+    def connection_lost(self, _exc):
+        self.on_con_lost.set_result(True)
+
+
+async def send_alert(loop):
+    topics = ['CPU Usage is high!', 'Memory is almost full!', 'Malicious activity detected!',
+              'System calls are getting slow', 'SWAP partition is full']
+
+    while True:
+        on_con_lost = loop.create_future()
+        message = random.choice(topics)
+
+        logger.warning(f'Sending {message!r} alert')
+        transport, protocol = await loop.create_datagram_endpoint(
+            lambda: EchoClientProtocol(message, on_con_lost),  # noqa
+            remote_addr=(settings.CHANAGER_IP, settings.ALS_PORT)
+        )
+        transport.close()
+        await asyncio.sleep(settings.CLIENT_ALERT_INTERVAL)
 
 
 async def main():
@@ -135,7 +176,14 @@ async def main():
         connection.setblocking(False)
 
     # real chanager has established a connection
-    await command_manager(connection, loop)
+    async with asyncio.TaskGroup() as task_group:
+        task_group.create_task(command_manager(connection, loop))
+        task_group.create_task(send_alert(loop))
 
 
-asyncio.run(main())
+try:
+    asyncio.run(main())
+except KeyboardInterrupt:
+    pass
+finally:
+    logger.info("Shutting down client...")

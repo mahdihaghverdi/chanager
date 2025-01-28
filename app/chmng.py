@@ -33,7 +33,7 @@ else:
             "<g>{time:YYYY-MMM-DD HH:mm:ss.SSS}</g> "
             "| <c><b>{level:<10}</b></c> "
             "| <y>{file}</y>:<y>{function}</y>:<y>{line}</y> "
-            "- <b>{message}</b>"
+            "- <bold>{message}</bold>"
         ),
         level='DEBUG'
     )
@@ -72,7 +72,7 @@ class Client:
         while True:
             await asyncio.sleep(settings.CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL)
             try:
-                await loop.sock_sendall(self.chc, "HealthCheck".encode())
+                await loop.sock_sendall(self.chc, Commands.health_check.encode())
             except (ConnectionRefusedError, BrokenPipeError):
                 while True:
                     try:
@@ -133,7 +133,6 @@ async def admin_commands(connection: socket.socket, loop):
                         memory ID
                         profile ID
                         processes ID
-                        restart ID
                         '''
         ).encode()
     )
@@ -163,14 +162,14 @@ async def admin_commands(connection: socket.socket, loop):
                 case Commands.cpu:
                     logger.debug('`cpu` was chosen.')
                     client = clients[id_[0]]
-                    await loop.sock_sendall(client.chc, b'cpu')
+                    await loop.sock_sendall(client.chc, Commands.cpu.encode())
                     report = (await loop.sock_recv(client.chc, 1024)).decode().strip()
                     await loop.sock_sendall(connection, f'CPU: {report}\n'.encode())
 
                 case Commands.memory:
                     logger.debug('`memory` was chosen.')
                     client = clients[id_[0]]
-                    await loop.sock_sendall(client.chc, b'memory')
+                    await loop.sock_sendall(client.chc, Commands.memory.encode())
                     report = (await loop.sock_recv(client.chc, 1024)).decode().strip()
                     await loop.sock_sendall(connection, f'Memory: {report}\n'.encode())
 
@@ -182,7 +181,7 @@ async def admin_commands(connection: socket.socket, loop):
                 case Commands.processes:
                     logger.debug('`processes` was chosen.')
                     client = clients[id_[0]]
-                    await loop.sock_sendall(client.chc, b'processes')
+                    await loop.sock_sendall(client.chc, Commands.processes.encode())
                     report = (await loop.sock_recv(client.chc, 1024)).decode().strip()
                     await loop.sock_sendall(connection, f'Running Processes: {report}\n'.encode())
 
@@ -210,6 +209,20 @@ async def listen_for_admin(server_socket, loop):
         loop.create_task(admin_commands(connection, loop))
 
 
+class EchoServerProtocol:
+    def __init__(self):
+        self.transport = None
+
+    def connection_made(self, transport):
+        self.transport = transport
+
+    def datagram_received(self, data, address):  # noqa
+        message = json.loads(data.decode().strip())
+        cid = message['id']
+        alert_msg = message['alert']
+        logger.critical(f'ALERT: <ID:{cid}> said: <{alert_msg!r}> (Address: {address})')
+
+
 async def main():
     logger.info(
         f"Chanager Server [{(settings.CHANAGER_IP, settings.RLS_PORT)}] `(Admin: {settings.CMD_PORT})`"
@@ -228,9 +241,20 @@ async def main():
 
     loop = asyncio.get_running_loop()
 
+    logger.info(f'Chanager UDP socket [{settings.ALS_PORT}] is listening...')
+    transport, _ = await loop.create_datagram_endpoint(
+        EchoServerProtocol,  # noqa
+        local_addr=(settings.CHANAGER_IP, settings.ALS_PORT)
+    )
+
     async with asyncio.TaskGroup() as task_group:
         task_group.create_task(listen_for_registration(rls, loop))
         task_group.create_task(listen_for_admin(cmd, loop))
 
 
-asyncio.run(main())
+try:
+    asyncio.run(main())
+except KeyboardInterrupt:
+    pass
+finally:
+    logger.info('Shutting down the server...')
