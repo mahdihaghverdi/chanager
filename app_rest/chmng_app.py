@@ -10,7 +10,7 @@ from loguru import logger
 from core.config import settings
 from core.http import get_http_session
 from schemas.chmng import ClientListOut, RegisterIn, RegisterOut
-from schemas.client import CPUOut
+from schemas.client import CPUOut, MemoryOut
 
 
 class Client:
@@ -89,7 +89,21 @@ async def cpu(
     async with http_client.get(f'http://{client.ip}:{client.port}/api/v1/cpu') as resp:
         if resp.status == 200:
             return await resp.json()
-    return HTTPException(status_code=resp.status, detail=await resp.json())
+    raise HTTPException(status_code=resp.status, detail=await resp.json())
+
+
+@router.get('/memory/{client_id}', response_model=MemoryOut)
+async def memory(
+    http_client: Annotated[ClientSession, Depends(get_http_session)],
+    client_id: uuid.UUID
+):
+    client_id = str(client_id)
+    client = clients[client_id]
+
+    async with http_client.get(f'http://{client.ip}:{client.port}/api/v1/memory') as resp:
+        if resp.status == 200:
+            return await resp.json()
+    raise HTTPException(status_code=resp.status, detail=await resp.json())
 
 
 app.include_router(router, prefix=settings.PREFIX)

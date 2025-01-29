@@ -10,7 +10,7 @@ from starlette import status
 from core.config import settings
 from core.http import get_http_session
 from schemas.chmng import RegisterIn
-from schemas.client import CPUOut
+from schemas.client import CPUOut, MemoryOut
 
 self_id = None
 
@@ -88,6 +88,18 @@ async def liveness():
 @router.get('/cpu', response_model=CPUOut)
 async def cpu():
     return {'cpu_percents': psutil.cpu_percent(percpu=True)}
+
+
+@router.get('/memory', response_model=MemoryOut)
+async def memory():
+    to_mb = lambda x: f"{x // 1024 // 1024} MB"  # noqa
+
+    mem = psutil.virtual_memory()
+    return {
+        'total': to_mb(mem.total),
+        'available': to_mb(mem.available),
+        'usage': mem.percent,
+    }
 
 
 app.include_router(router, prefix=settings.PREFIX)
