@@ -106,4 +106,18 @@ async def memory(
     raise HTTPException(status_code=resp.status, detail=await resp.json())
 
 
+@router.get('/processes/{client_id}')
+async def processes(
+    http_client: Annotated[ClientSession, Depends(get_http_session)],
+    client_id: uuid.UUID
+):
+    client_id = str(client_id)
+    client = clients[client_id]
+
+    async with http_client.get(f'http://{client.ip}:{client.port}/api/v1/processes') as resp:
+        if resp.status == 200:
+            return await resp.json()
+    raise HTTPException(status_code=resp.status, detail=await resp.json())
+
+
 app.include_router(router, prefix=settings.PREFIX)

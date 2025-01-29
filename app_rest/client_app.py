@@ -1,3 +1,4 @@
+import subprocess
 from contextlib import asynccontextmanager
 from typing import Annotated
 
@@ -76,7 +77,7 @@ async def register(http_client: Annotated[ClientSession, Depends(get_http_sessio
             else:
                 raise HTTPException(
                     status_code=status.HTTP_406_NOT_ACCEPTABLE,
-                    detail=f"Could'nt register: {json}",
+                    detail=f"Couldn't register: {json}",
                 )
 
 
@@ -100,6 +101,12 @@ async def memory():
         'available': to_mb(mem.available),
         'usage': mem.percent,
     }
+
+
+@router.get('/processes')
+async def processes():
+    res = subprocess.getoutput("ps uaxw | wc -l")
+    return res
 
 
 app.include_router(router, prefix=settings.PREFIX)
