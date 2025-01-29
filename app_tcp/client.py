@@ -21,7 +21,7 @@ if settings.LOGLEVEL == LogLevels.INFO:
             "| <c><b>{level:<10}</b></c> "
             "| <bold>{message}</bold>"
         ),
-        level='INFO'
+        level="INFO",
     )
 else:
     logger.add(
@@ -33,7 +33,7 @@ else:
             "| <y>{file}</y>:<y>{function}</y>:<y>{line}</y> "
             "- <bold>{message}</bold>"
         ),
-        level='DEBUG'
+        level="DEBUG",
     )
 
 chanager = None
@@ -49,7 +49,7 @@ class Chanager:
 
 
 async def register(loop):
-    logger.info('Sending registry request to Chanager...')
+    logger.info("Sending registry request to Chanager...")
     global chanager, self_id
 
     # create register
@@ -58,10 +58,10 @@ async def register(loop):
     register_sock.setblocking(False)
 
     # connect
-    logger.debug(f'Try connecting to {(settings.CHANAGER_IP, settings.RLS_PORT)}')
+    logger.debug(f"Try connecting to {(settings.CHANAGER_IP, settings.RLS_PORT)}")
     await loop.sock_connect(register_sock, (settings.CHANAGER_IP, settings.RLS_PORT))
 
-    logger.debug('Sending profile data...')
+    logger.debug("Sending profile data...")
     # send data
     await loop.sock_sendall(
         register_sock,
@@ -71,13 +71,13 @@ async def register(loop):
     )
 
     # get data
-    logger.debug('Getting needed data...')
+    logger.debug("Getting needed data...")
     chanager_raw_data = (await loop.sock_recv(register_sock, 1024)).decode().strip()
     chanager_data = json.loads(chanager_raw_data)
     self_id = chanager_data["id"]
     chanager = Chanager(als_port=chanager_data["als_port"])
     logger.debug(f"{chanager=}")
-    logger.info('Registration complete.')
+    logger.info("Registration complete.")
 
     # shutdown
     register_sock.shutdown(socket.SHUT_RDWR)
@@ -94,24 +94,24 @@ async def command_manager(connection: socket.socket, loop):
 
             case Commands.cpu:
                 res = psutil.cpu_percent(percpu=True)
-                await loop.sock_sendall(connection, f'{res}'.encode())
+                await loop.sock_sendall(connection, f"{res}".encode())
 
             case Commands.memory:
-                to_mb = lambda x: f'{x // 1024 // 1024} MB'  # noqa
+                to_mb = lambda x: f"{x // 1024 // 1024} MB"  # noqa
 
                 res = psutil.virtual_memory()
-                to_send = ', '.join(
+                to_send = ", ".join(
                     [
-                        'Total: ' + to_mb(res.total),
-                        'Available: ' + to_mb(res.available),
-                        'Usage: ' + str(res.percent) + "%"
+                        "Total: " + to_mb(res.total),
+                        "Available: " + to_mb(res.available),
+                        "Usage: " + str(res.percent) + "%",
                     ]
                 )
                 await loop.sock_sendall(connection, to_send.encode())
 
             case Commands.processes:
-                res = subprocess.getoutput('ps uaxw | wc -l')
-                await loop.sock_sendall(connection, f'{res}'.encode())
+                res = subprocess.getoutput("ps uaxw | wc -l")
+                await loop.sock_sendall(connection, f"{res}".encode())
 
 
 class EchoClientProtocol:
@@ -122,31 +122,36 @@ class EchoClientProtocol:
 
     def connection_made(self, transport):
         self.transport = transport
-        message = {'id': self_id, 'alert': self.message}
+        message = {"id": self_id, "alert": self.message}
         self.transport.sendto(json.dumps(message).encode())
 
     def datagram_received(self, data, addr):  # noqa
-        logger.info('Received:', data.decode().strip(), 'from:', addr)
+        logger.info("Received:", data.decode().strip(), "from:", addr)
 
     def error_received(self, exc):  # noqa
-        logger.exception('Error received:', exc)
+        logger.exception("Error received:", exc)
 
     def connection_lost(self, _exc):
         self.on_con_lost.set_result(True)
 
 
 async def send_alert(loop):
-    topics = ['CPU Usage is high!', 'Memory is almost full!', 'Malicious activity detected!',
-              'System calls are getting slow', 'SWAP partition is full']
+    topics = [
+        "CPU Usage is high!",
+        "Memory is almost full!",
+        "Malicious activity detected!",
+        "System calls are getting slow",
+        "SWAP partition is full",
+    ]
 
     while True:
         on_con_lost = loop.create_future()
         message = random.choice(topics)
 
-        logger.warning(f'Sending {message!r} alert')
+        logger.warning(f"Sending {message!r} alert")
         transport, protocol = await loop.create_datagram_endpoint(
             lambda: EchoClientProtocol(message, on_con_lost),  # noqa
-            remote_addr=(settings.CHANAGER_IP, settings.ALS_PORT)
+            remote_addr=(settings.CHANAGER_IP, settings.ALS_PORT),
         )
         transport.close()
         await asyncio.sleep(settings.CLIENT_ALERT_INTERVAL)
