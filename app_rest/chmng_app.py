@@ -47,13 +47,16 @@ router = APIRouter()
 
 clients = {}
 
+lock = asyncio.Lock()
+
 
 @router.post("/register", response_model=RegisterOut)
 async def register(reg_data: RegisterIn):
-    client_uuid = uuid.uuid4()
-    clients[str(client_uuid)] = Client(
-        id_=client_uuid, ip=reg_data.ip, port=reg_data.port, name=reg_data.name
-    )
+    async with lock:
+        client_uuid = uuid.uuid4()
+        clients[str(client_uuid)] = Client(
+            id_=client_uuid, ip=reg_data.ip, port=reg_data.port, name=reg_data.name
+        )
 
     return {"id": client_uuid}
 
@@ -62,9 +65,12 @@ async def check_liveness(id_: uuid.UUID, http_client: ClientSession):
     client = clients[id_]
     ip, port = client.ip, client.port
 
-    async with http_client.post(f"http://{ip}:{port}/api/v1/liveness") as resp:
-        if resp.status != 200:
-            del clients[id_]
+    try:
+        async with http_client.post(f"http://{ip}:{port}/api/v1/liveness") as resp:
+            if resp.status != 200:
+                del clients[id_]
+    except Exception:  # noqa
+        del clients[id_]
 
 
 @router.get("/list", response_model=ClientListOut)
