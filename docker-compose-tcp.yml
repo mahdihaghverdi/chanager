@@ -3,7 +3,7 @@ services:
         container_name: chanager
         build:
             context: .
-            dockerfile: Dockerfile
+            dockerfile: Dockerfile-tcp
         environment:
             CHANAGER_IP: "172.20.1.1" 
             CHANAGER_WAIT_TO_CONNECT: 2
@@ -17,14 +17,14 @@ services:
         networks:
             static-network:
                 ipv4_address: 172.20.1.1
-        command: ["python", "app/chmng.py"]
+        command: ["python", "chmng.py"]
 
 
     client-5:
         container_name: client-5
         build:
             context: .
-            dockerfile: Dockerfile
+            dockerfile: Dockerfile-tcp
         environment:
             CHANAGER_IP: "172.20.1.1"
             CHANAGER_WAIT_TO_CONNECT: 2
@@ -36,11 +36,11 @@ services:
             CLIENT_CLS_PORT: 8000
             CLIENT_IP: "172.20.1.5"
             CLIENT_ALERT_INTERVAL: 5
-            LOGLEVEL: "info"
+            LOGLEVEL: "debug"
         networks:
             static-network:
                 ipv4_address: 172.20.1.5
-        command: ["python", "app/client.py", "1"]
+        command: ["python", "client.py", "1"]
         depends_on:
             - chanager
 
@@ -49,7 +49,7 @@ services:
         container_name: client-10
         build:
             context: .
-            dockerfile: Dockerfile
+            dockerfile: Dockerfile-tcp
         environment:
             CHANAGER_IP: "172.20.1.1"
             CHANAGER_WAIT_TO_CONNECT: 2
@@ -65,7 +65,7 @@ services:
         networks:
             static-network:
                 ipv4_address: 172.20.1.10
-        command: ["python", "app/client.py", "1"]
+        command: ["python", "client.py", "1"]
         depends_on:
             - chanager
 
@@ -74,7 +74,7 @@ services:
         container_name: client-15
         build:
             context: .
-            dockerfile: Dockerfile
+            dockerfile: Dockerfile-tcp
         environment:
             CHANAGER_IP: "172.20.1.1"
             CHANAGER_WAIT_TO_CONNECT: 2
@@ -90,7 +90,7 @@ services:
         networks:
             static-network:
                 ipv4_address: 172.20.1.15
-        command: ["python", "app/client.py", "1"]
+        command: ["python", "client.py", "1"]
         depends_on:
             - chanager
 
@@ -99,7 +99,7 @@ services:
         container_name: client-20
         build:
             context: .
-            dockerfile: Dockerfile
+            dockerfile: Dockerfile-tcp
         environment:
             CHANAGER_IP: "172.20.1.1"
             CHANAGER_WAIT_TO_CONNECT: 2
@@ -115,7 +115,7 @@ services:
         networks:
             static-network:
                 ipv4_address: 172.20.1.20
-        command: ["python", "app/client.py", "1"]
+        command: ["python", "client.py", "1"]
         depends_on:
             - chanager
 
@@ -124,7 +124,7 @@ services:
         container_name: client-25
         build:
             context: .
-            dockerfile: Dockerfile
+            dockerfile: Dockerfile-tcp
         environment:
             CHANAGER_IP: "172.20.1.1"
             CHANAGER_WAIT_TO_CONNECT: 2
@@ -140,7 +140,7 @@ services:
         networks:
             static-network:
                 ipv4_address: 172.20.1.25
-        command: ["python", "app/client.py", "1"]
+        command: ["python", "client.py", "1"]
         depends_on:
             - chanager
 
@@ -149,7 +149,7 @@ services:
         container_name: client-30
         build:
             context: .
-            dockerfile: Dockerfile
+            dockerfile: Dockerfile-tcp
         environment:
             CHANAGER_IP: "172.20.1.1"
             CHANAGER_WAIT_TO_CONNECT: 2
@@ -165,7 +165,7 @@ services:
         networks:
             static-network:
                 ipv4_address: 172.20.1.30
-        command: ["python", "app/client.py", "1"]
+        command: ["python", "client.py", "1"]
         depends_on:
             - chanager
 
@@ -174,7 +174,7 @@ services:
         container_name: client-35
         build:
             context: .
-            dockerfile: Dockerfile
+            dockerfile: Dockerfile-tcp
         environment:
             CHANAGER_IP: "172.20.1.1"
             CHANAGER_WAIT_TO_CONNECT: 2
@@ -190,7 +190,7 @@ services:
         networks:
             static-network:
                 ipv4_address: 172.20.1.35
-        command: ["python", "app/client.py", "1"]
+        command: ["python", "client.py", "1"]
         depends_on:
             - chanager
 
@@ -199,7 +199,7 @@ services:
         container_name: client-40
         build:
             context: .
-            dockerfile: Dockerfile
+            dockerfile: Dockerfile-tcp
         environment:
             CHANAGER_IP: "172.20.1.1"
             CHANAGER_WAIT_TO_CONNECT: 2
@@ -215,7 +215,7 @@ services:
         networks:
             static-network:
                 ipv4_address: 172.20.1.40
-        command: ["python", "app/client.py", "1"]
+        command: ["python", "client.py", "1"]
         depends_on:
             - chanager
 
@@ -224,7 +224,7 @@ services:
         container_name: client-45
         build:
             context: .
-            dockerfile: Dockerfile
+            dockerfile: Dockerfile-tcp
         environment:
             CHANAGER_IP: "172.20.1.1"
             CHANAGER_WAIT_TO_CONNECT: 2
@@ -240,7 +240,7 @@ services:
         networks:
             static-network:
                 ipv4_address: 172.20.1.45
-        command: ["python", "app/client.py", "1"]
+        command: ["python", "client.py", "1"]
         depends_on:
             - chanager
 
@@ -249,7 +249,7 @@ services:
         container_name: client-50
         build:
             context: .
-            dockerfile: Dockerfile
+            dockerfile: Dockerfile-tcp
         environment:
             CHANAGER_IP: "172.20.1.1"
             CHANAGER_WAIT_TO_CONNECT: 2
@@ -265,7 +265,7 @@ services:
         networks:
             static-network:
                 ipv4_address: 172.20.1.50
-        command: ["python", "app/client.py", "1"]
+        command: ["python", "client.py", "1"]
         depends_on:
             - chanager
 

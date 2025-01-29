@@ -21,7 +21,7 @@ COPY pyproject.toml poetry.lock /code/
 # Install dependencies and the root package
 RUN poetry install --no-ansi
 
-COPY . /code
+COPY ./app_tcp /code
 
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 RUN chown -R appuser:appuser /code

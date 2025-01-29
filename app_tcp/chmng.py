@@ -95,32 +95,36 @@ class Client:
                         break
 
 
+lock = asyncio.Lock()
+
+
 async def register(connection: socket.socket, loop, address):
-    client_raw_data = (await loop.sock_recv(connection, 1024)).decode().strip()
-    client_data = json.loads(client_raw_data)
+    async with lock:
+        client_raw_data = (await loop.sock_recv(connection, 1024)).decode().strip()
+        client_data = json.loads(client_raw_data)
 
-    client_uuid = uuid.uuid4()
-    clients[str(client_uuid)] = (
-        client := Client(
-            id_=client_uuid,
-            ip=address[0],
-            cls_port=client_data["cls_port"],
-            name=client_data.get("name"),
+        client_uuid = uuid.uuid4()
+        clients[str(client_uuid)] = (
+            client := Client(
+                id_=client_uuid,
+                ip=address[0],
+                cls_port=client_data["cls_port"],
+                name=client_data.get("name"),
+            )
         )
-    )
 
-    await loop.sock_sendall(
-        connection,
-        json.dumps({"id": str(client_uuid), "als_port": settings.ALS_PORT}).encode(),
-    )
-    connection.shutdown(socket.SHUT_RDWR)
-    logger.debug(f"Registration for {client} is done.")
+        await loop.sock_sendall(
+            connection,
+            json.dumps({"id": str(client_uuid), "als_port": settings.ALS_PORT}).encode(),
+        )
+        connection.shutdown(socket.SHUT_RDWR)
+        logger.debug(f"Registration for {client} is done.")
 
-    await asyncio.sleep(settings.CHANAGER_WAIT_TO_CONNECT)
-    logger.debug(f"Trying to connect to: {(client.ip, client.cls_port)}")
+        await asyncio.sleep(settings.CHANAGER_WAIT_TO_CONNECT)
+        logger.debug(f"Trying to connect to: {(client.ip, client.cls_port)}")
 
-    await client.connect(loop)
-    loop.create_task(client.health_check(loop))
+        await client.connect(loop)
+        loop.create_task(client.health_check(loop))
 
 
 async def admin_commands(connection: socket.socket, loop):
@@ -128,14 +132,14 @@ async def admin_commands(connection: socket.socket, loop):
         connection,
         textwrap.dedent(
             """\
-                        You can choose from these commands:
+            You can choose from these commands:
 
-                        list
-                        cpu ID
-                        memory ID
-                        profile ID
-                        processes ID
-                        """
+            list
+            cpu ID
+            memory ID
+            profile ID
+            processes ID
+            """
         ).encode(),
     )
     while data := await loop.sock_recv(connection, 1024):
@@ -153,11 +157,11 @@ async def admin_commands(connection: socket.socket, loop):
                         connection,
                         textwrap.dedent(
                             f"""\
-                        List of all registered clients
-                        ------------------------------
-                        
-                        {'\n'.join(f'{ind}: {key}' for ind, key in zip(map(str, range(1, len(clients) + 1)), clients))}
-                        """
+                            List of all registered clients
+                            ------------------------------
+                            
+                            {'\n'.join(f'{ind:>2}: {key}' for ind, key in zip(map(str, range(1, len(clients) + 1)), clients))}
+                            """
                         ).encode(),
                     )
 
