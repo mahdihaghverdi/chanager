@@ -19,6 +19,8 @@ services:
         command: [
             "uvicorn",
             "chmng_app:app",
+            "--host",
+            "0.0.0.0",
             "--port",
             "7000"
         ]
@@ -47,6 +49,8 @@ services:
         command: [
             "uvicorn",
             "client_app:app",
+            "--host",
+            "0.0.0.0",
             "--port",
             "7005"
         ]
