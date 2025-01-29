@@ -129,6 +129,7 @@ celerybeat.pid
 
 # Environments
 app_tcp/.env
+app_rest/.env
 .venv
 env/
 venv/
