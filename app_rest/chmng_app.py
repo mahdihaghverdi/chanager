@@ -4,12 +4,13 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from aiohttp import ClientSession
-from fastapi import APIRouter, Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from loguru import logger
 
 from core.config import settings
 from core.http import get_http_session
 from schemas.chmng import ClientListOut, RegisterIn, RegisterOut
+from schemas.client import CPUOut
 
 
 class Client:
@@ -75,6 +76,20 @@ async def list_clients(
             task_group.create_task(check_liveness(client, http_client))
 
     return {"clients": list(clients.values())}
+
+
+@router.get('/cpu/{client_id}', response_model=CPUOut)
+async def cpu(
+    http_client: Annotated[ClientSession, Depends(get_http_session)],
+    client_id: uuid.UUID
+):
+    client_id = str(client_id)
+    client = clients[client_id]
+
+    async with http_client.get(f'http://{client.ip}:{client.port}/api/v1/cpu') as resp:
+        if resp.status == 200:
+            return await resp.json()
+    return HTTPException(status_code=resp.status, detail=await resp.json())
 
 
 app.include_router(router, prefix=settings.PREFIX)

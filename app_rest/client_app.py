@@ -1,15 +1,16 @@
 from contextlib import asynccontextmanager
 from typing import Annotated
 
+import psutil
 from aiohttp import ClientSession
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from loguru import logger
 from starlette import status
-from starlette.responses import Response
 
 from core.config import settings
 from core.http import get_http_session
 from schemas.chmng import RegisterIn
+from schemas.client import CPUOut
 
 self_id = None
 
@@ -82,6 +83,11 @@ async def register(http_client: Annotated[ClientSession, Depends(get_http_sessio
 @router.post("/liveness")
 async def liveness():
     return
+
+
+@router.get('/cpu', response_model=CPUOut)
+async def cpu():
+    return {'cpu_percents': psutil.cpu_percent(percpu=True)}
 
 
 app.include_router(router, prefix=settings.PREFIX)
