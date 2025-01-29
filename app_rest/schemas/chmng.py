@@ -11,3 +11,12 @@ class RegisterIn(BaseModel):
 
 class RegisterOut(BaseModel):
     id: UUID
+
+
+class ClientOut(BaseModel):
+    id: UUID
+    name: str
+
+
+class ClientListOut(BaseModel):
+    clients: list[ClientOut]

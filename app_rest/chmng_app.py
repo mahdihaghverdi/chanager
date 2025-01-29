@@ -6,7 +6,7 @@ from loguru import logger
 
 from core.config import settings
 from core.http import get_http_session
-from schemas.chmng import RegisterIn, RegisterOut
+from schemas.chmng import ClientListOut, RegisterIn, RegisterOut
 
 
 class Client:
@@ -44,7 +44,7 @@ router = APIRouter()
 clients = {}
 
 
-@router.post(f"/register", response_model=RegisterOut)
+@router.post("/register", response_model=RegisterOut)
 async def register(reg_data: RegisterIn):
     client_uuid = uuid.uuid4()
     clients[str(client_uuid)] = Client(
@@ -54,4 +54,11 @@ async def register(reg_data: RegisterIn):
     return {"id": client_uuid}
 
 
-app.include_router(router, prefix=settings.PREFIX, tags=["register"])
+@router.get('/list', response_model=ClientListOut)
+async def list_clients():
+    # check liveness
+    pass
+
+
+
+app.include_router(router, prefix=settings.PREFIX)
