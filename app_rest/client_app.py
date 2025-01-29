@@ -5,6 +5,7 @@ from aiohttp import ClientSession
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from loguru import logger
 from starlette import status
+from starlette.responses import Response
 
 from core.config import settings
 from core.http import get_http_session
@@ -22,19 +23,16 @@ async def lifespan(_app: FastAPI):
     logger.debug("Creating HTTP Client...")
     http_client = await get_http_session()
 
-    logger.debug('Registering...')
+    logger.debug("Registering...")
     async with http_client.post(
-        f'http://{settings.CHANAGER_IP}:{settings.CHANAGER_PORT}'
-        f'{settings.PREFIX}/register',
+        f"http://{settings.CHANAGER_IP}:{settings.CHANAGER_PORT}" f"/api/v1/register",
         json=RegisterIn(
-            ip=settings.CLIENT_IP,
-            port=settings.CLIENT_PORT,
-            name=settings.CLIENT_TITLE
-        ).model_dump(mode='json')
+            ip=settings.CLIENT_IP, port=settings.CLIENT_PORT, name=settings.CLIENT_TITLE
+        ).model_dump(mode="json"),
     ) as resp:
         json = await resp.json()
         if resp.status == 200:
-            self_id = json['id']
+            self_id = json["id"]
         else:
             raise TypeError(f"Could not register: {json}")
 
@@ -57,28 +55,33 @@ app = FastAPI(
 router = APIRouter()
 
 
-@router.post('/register', status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/register", status_code=status.HTTP_204_NO_CONTENT)
 async def register(http_client: Annotated[ClientSession, Depends(get_http_session)]):
     global self_id
 
     if self_id is None:
         async with http_client.post(
-            f'http://{settings.CHANAGER_IP}:{settings.CHANAGER_PORT}'
-            f'{settings.PREFIX}/register',
+            f"http://{settings.CHANAGER_IP}:{settings.CHANAGER_PORT}"
+            f"/api/v1/register",
             json=RegisterIn(
                 ip=settings.CLIENT_IP,
                 port=settings.CLIENT_PORT,
-                name=settings.CLIENT_TITLE
-            ).model_dump(mode='json')
+                name=settings.CLIENT_TITLE,
+            ).model_dump(mode="json"),
         ) as resp:
             json = await resp.json()
             if resp.status == 200:
-                self_id = json['id']
+                self_id = json["id"]
             else:
                 raise HTTPException(
                     status_code=status.HTTP_406_NOT_ACCEPTABLE,
-                    detail=f'Could\'nt register: {json}'
+                    detail=f"Could'nt register: {json}",
                 )
+
+
+@router.post("/liveness")
+async def liveness():
+    return
 
 
 app.include_router(router, prefix=settings.PREFIX)
