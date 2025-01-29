@@ -63,7 +63,7 @@ class CommandProtocol(QuicConnectionProtocol):
     # def __init__(self, *args, **kwargs):
     #     super().__init__(*args, **kwargs)
 
-    async def quic_event_received(self, event: QuicEvent):
+    def quic_event_received(self, event: QuicEvent):
         if isinstance(event, StreamDataReceived):
             # # parse answer
             # length = struct.unpack("!H", bytes(event.data[:2]))[0]
@@ -72,9 +72,11 @@ class CommandProtocol(QuicConnectionProtocol):
             answer = (event.data).decode()
             res = self.command_manager(answer)
 
+            # res = self.command_manager(res).encode()
+            res = "dude every thing is fine".encode()
             self._quic.send_stream_data(event.stream_id, res, end_stream=True)
     
-    def command_manager(command):
+    def command_manager(self, command):
         match command:
             case Commands.health_check:
                 pass
@@ -99,18 +101,20 @@ class CommandProtocol(QuicConnectionProtocol):
                 return subprocess.getoutput('ps uaxw | wc -l')
 
 
-async def command_manager_f(configuration):
+async def command_manager_f(configuration, session_ticket_store):
     await serve(
         # settings.CHANAGER_IP,
         "localhost",
         settings.CLIENT_CLS_PORT,
         configuration=configuration,
         create_protocol=CommandProtocol,
-        session_ticket_fetcher=SessionTicketStore.pop,
-        session_ticket_handler=SessionTicketStore.add,
+        session_ticket_fetcher=session_ticket_store.pop,
+        session_ticket_handler=session_ticket_store.add,
         retry=True
     )
+    print("Awli")
     await asyncio.Future()
+    print("shit man")
 
 
 class EchoClientProtocol:
@@ -217,9 +221,6 @@ class SessionTicketStore:
         return self.tickets.pop(label, None)
 
 
-
-
-
 async def main() -> None:
     logger.debug(f"Connecting to {settings.CHANAGER_IP}:{settings.RLS_PORT}")
     if sys.argv[1] == "1":
@@ -258,7 +259,7 @@ async def main() -> None:
 
     # loop = asyncio.get_running_loop()
     # async with asyncio.TaskGroup() as task_group:
-    await command_manager_f(configuration_cmd)
+    await command_manager_f(configuration_cmd, session_ticket_store=SessionTicketStore())
     # loop.create_task(send_alert(loop))
 
 
