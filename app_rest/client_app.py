@@ -25,18 +25,18 @@ async def lifespan(_app: FastAPI):
     logger.debug("Creating HTTP Client...")
     http_client = await get_http_session()
 
-    logger.debug("Registering...")
-    async with http_client.post(
-        f"http://{settings.CHANAGER_IP}:{settings.CHANAGER_PORT}" f"/api/v1/register",
-        json=RegisterIn(
-            ip=settings.CLIENT_IP, port=settings.CLIENT_PORT, name=settings.CLIENT_TITLE
-        ).model_dump(mode="json"),
-    ) as resp:
-        json = await resp.json()
-        if resp.status == 200:
-            self_id = json["id"]
-        else:
-            raise TypeError(f"Could not register: {json}")
+    # logger.debug("Registering...")
+    # async with http_client.post(
+    #     f"http://{settings.CHANAGER_IP}:{settings.CHANAGER_PORT}" f"/api/v1/register",
+    #     json=RegisterIn(
+    #         ip=settings.CLIENT_IP, port=settings.CLIENT_PORT, name=settings.CLIENT_TITLE
+    #     ).model_dump(mode="json"),
+    # ) as resp:
+    #     json = await resp.json()
+    #     if resp.status == 200:
+    #         self_id = json["id"]
+    #     else:
+    #         raise TypeError(f"Could not register: {json}")
 
     logger.info("Client start complete.")
     yield

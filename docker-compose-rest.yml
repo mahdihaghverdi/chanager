@@ -1,0 +1,62 @@
+services:
+    chanager-rest:
+        container_name: chanager-rest
+        build:
+            context: .
+            dockerfile: Dockerfile-rest
+        environment:
+            DEBUG: False
+            API_VERSION: "v1"
+            CHANAGER_IP: "172.20.1.1" 
+            CHANAGER_PORT: 7000
+            CHANAGER_TITLE: "Chanager Main Service"
+            CHANAGER_VERSION: "0.1.0"
+        ports:
+          - "7000:7000"
+        networks:
+            rest-network:
+                ipv4_address: 172.20.1.1
+        command: [
+            "uvicorn",
+            "chmng_app:app",
+            "--port",
+            "7000"
+        ]
+
+    client-5:
+        container_name: client-5
+        build:
+            context: .
+            dockerfile: Dockerfile-rest
+        environment:
+            DEBUG: False
+            API_VERSION: "v1"
+            CHANAGER_IP: "172.20.1.1"
+            CHANAGER_PORT: 7000
+            CHANAGER_TITLE: "Chanager Main Service"
+            CHANAGER_VERSION: "0.1.0"
+            CLIENT_TITLE: "Client-5"
+            CLIENT_VERSION: "0.1.0"
+            CLIENT_IP: "172.20.1.5"
+            CLIENT_PORT: 7005
+        ports:
+            - "7005:7005"
+        networks:
+            rest-network:
+                ipv4_address: 172.20.1.5
+        command: [
+            "uvicorn",
+            "client_app:app",
+            "--port",
+            "7005"
+        ]
+        depends_on:
+            - chanager-rest
+
+
+networks:
+    rest-network:
+       driver: bridge
+       ipam:
+           config:
+               - subnet: 172.20.0.0/16
