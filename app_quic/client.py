@@ -60,8 +60,8 @@ class Chanager:
 
 
 class CommandProtocol(QuicConnectionProtocol):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
 
     async def quic_event_received(self, event: QuicEvent):
         if isinstance(event, StreamDataReceived):
@@ -99,35 +99,18 @@ class CommandProtocol(QuicConnectionProtocol):
                 return subprocess.getoutput('ps uaxw | wc -l')
 
 
-async def command_manager(connection: socket.socket, loop):
-    while data := await loop.sock_recv(connection, 1024):
-        data = data.decode().strip()
-        logger.debug(f"Chanager: {data}")
-
-        match data:
-            case Commands.health_check:
-                await asyncio.sleep(0.001)
-
-            case Commands.cpu:
-                res = psutil.cpu_percent(percpu=True)
-                await loop.sock_sendall(connection, f'{res}'.encode())
-
-            case Commands.memory:
-                to_mb = lambda x: f'{x // 1024 // 1024} MB'  # noqa
-
-                res = psutil.virtual_memory()
-                to_send = ', '.join(
-                    [
-                        'Total: ' + to_mb(res.total),
-                        'Available: ' + to_mb(res.available),
-                        'Usage: ' + str(res.percent) + "%"
-                    ]
-                )
-                await loop.sock_sendall(connection, to_send.encode())
-
-            case Commands.processes:
-                res = subprocess.getoutput('ps uaxw | wc -l')
-                await loop.sock_sendall(connection, f'{res}'.encode())
+async def command_manager_f(configuration):
+    await serve(
+        # settings.CHANAGER_IP,
+        "localhost",
+        settings.CLIENT_CLS_PORT,
+        configuration=configuration,
+        create_protocol=CommandProtocol,
+        session_ticket_fetcher=SessionTicketStore.pop,
+        session_ticket_handler=SessionTicketStore.add,
+        retry=True
+    )
+    await asyncio.Future()
 
 
 class EchoClientProtocol:
@@ -234,6 +217,9 @@ class SessionTicketStore:
         return self.tickets.pop(label, None)
 
 
+
+
+
 async def main() -> None:
     logger.debug(f"Connecting to {settings.CHANAGER_IP}:{settings.RLS_PORT}")
     if sys.argv[1] == "1":
@@ -270,24 +256,11 @@ async def main() -> None:
     )
     configuration_cmd.load_cert_chain("app_quic/certs/ssl_cert.pem", "app_quic/certs/ssl_key.pem")
 
-    print("ARE YOU WAITING?")
-    await serve(
-        # settings.CHANAGER_IP,
-        "localhost",
-        settings.CLIENT_CLS_PORT,
-        configuration=configuration_cmd,
-        create_protocol=CommandProtocol,
-        session_ticket_fetcher=SessionTicketStore.pop,
-        session_ticket_handler=SessionTicketStore.add,
-        retry=True
-    )
-
-    loop = asyncio.get_running_loop()
+    # loop = asyncio.get_running_loop()
     # async with asyncio.TaskGroup() as task_group:
-        # task_group.create_task(command_manager(connection, loop))
-    loop.create_task(send_alert(loop))
+    await command_manager_f(configuration_cmd)
+    # loop.create_task(send_alert(loop))
 
-    await asyncio.Future()
 
 
 

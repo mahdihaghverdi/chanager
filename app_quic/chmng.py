@@ -60,6 +60,11 @@ def save_session_ticket(ticket):
 
 
 class ClientProtocol(QuicConnectionProtocol):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._ack_waiter: Optional[asyncio.Future[str]] = None
+
+
     def quic_event_received(self, event: QuicEvent):
         if isinstance(event, StreamDataReceived):
             # parse answer
@@ -70,6 +75,16 @@ class ClientProtocol(QuicConnectionProtocol):
             waiter = self._ack_waiter
             self._ack_waiter = None
             waiter.set_result(answer)
+
+
+    async def send_data(self, data: bytes):
+        stream_id = self._quic.get_next_available_stream_id()
+        self._quic.send_stream_data(stream_id, data, end_stream=True)
+        waiter = self._loop.create_future()
+        self._ack_waiter = waiter
+        self.transmit()
+
+        return await asyncio.shield(waiter)
 
 
 clients: dict[str, "Client"] = {}
@@ -101,15 +116,19 @@ class Client:
         return base
 
     async def command(self, command) -> str:
-        await self.send_data(command.encode())
+        print(f'command": {command}')
+        # await self.send_data(command)
 
-        if command != Commands.health_check:
-            waiter = self._loop.create_future()
-            self._ack_waiter = waiter
-            self.transmit()
-
-            return asyncio.shield(waiter)
-        return ""
+        async with connect(
+            "localhost",
+            settings.CLIENT_CLS_PORT,
+            configuration=self.configuration,
+            session_ticket_handler=save_session_ticket,
+            create_protocol=ClientProtocol,
+        ) as client:
+            client = cast(ClientProtocol, client)
+            answer = await client.send_data(command)
+            return answer
 
     async def connect(self):
         chc = connect(
@@ -132,9 +151,10 @@ class Client:
             session_ticket_handler=save_session_ticket,
             create_protocol=ClientProtocol
         ) as client:
+            print("Are we connected?")
             stream_id = client._quic.get_next_available_stream_id()
             client._quic.send_stream_data(stream_id, data, end_stream=True)
-            client.transmit()
+            # client.transmit()
         
         logger.debug(f"Data sent on stream {stream_id}: {data}")
 
@@ -143,7 +163,7 @@ class Client:
         while True:
             await asyncio.sleep(settings.CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL)
             try:
-                await self.command(Commands.health_check)
+                await self.command(Commands.health_check.encode())
             except (ConnectionRefusedError, BrokenPipeError):
                 while True:
                     try:
@@ -291,12 +311,12 @@ class RegistrationProtocol(QuicConnectionProtocol):
             # asyncio.sleep(settings.CHANAGER_WAIT_TO_CONNECT)
             logger.debug(f"Trying to connect to: {(client.ip, client.cls_port)}")
 
-            loop = asyncio.get_running_loop()
+            # loop = asyncio.get_running_loop()
 
             # loop.create_task(client.connect())
-            import time
-            time.sleep(5)
-            loop.create_task(client.health_check())
+            # import time
+            # time.sleep(5)
+            # loop.create_task(client.health_check())
 
 
 class SessionTicketStore:
