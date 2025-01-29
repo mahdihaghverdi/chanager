@@ -5,17 +5,18 @@ import socket
 import subprocess
 import sys
 import struct
-from typing import Optional, cast
+from typing import Optional, cast, Dict
 
 import psutil
 from loguru import logger
 
 # Quic
-from aioquic.asyncio.client import connect
+from aioquic.asyncio import connect, serve
 from aioquic.asyncio.protocol import QuicConnectionProtocol
 from aioquic.quic.configuration import QuicConfiguration
 from aioquic.quic.events import QuicEvent, StreamDataReceived
 # from aioquic.quic.logger import QuicFileLogger
+from aioquic.tls import SessionTicket
 
 from core.commands import Commands
 from core.config import LogLevels, settings
@@ -56,6 +57,46 @@ class Chanager:
 
     def __repr__(self):
         return f"Chanager(als_port={self.als_port})"
+
+
+class CommandProtocol(QuicConnectionProtocol):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    async def quic_event_received(self, event: QuicEvent):
+        if isinstance(event, StreamDataReceived):
+            # # parse answer
+            # length = struct.unpack("!H", bytes(event.data[:2]))[0]
+            # answer = (event.data[2 : 2 + length]).decode()
+
+            answer = (event.data).decode()
+            res = self.command_manager(answer)
+
+            self._quic.send_stream_data(event.stream_id, res, end_stream=True)
+    
+    def command_manager(command):
+        match command:
+            case Commands.health_check:
+                pass
+
+            case Commands.cpu:
+                return psutil.cpu_percent(percpu=True)
+
+            case Commands.memory:
+                to_mb = lambda x: f'{x // 1024 // 1024} MB'  # noqa
+
+                res = psutil.virtual_memory()
+                to_send = ', '.join(
+                    [
+                        'Total: ' + to_mb(res.total),
+                        'Available: ' + to_mb(res.available),
+                        'Usage: ' + str(res.percent) + "%"
+                    ]
+                )
+                return to_send
+
+            case Commands.processes:
+                return subprocess.getoutput('ps uaxw | wc -l')
 
 
 async def command_manager(connection: socket.socket, loop):
@@ -178,14 +219,37 @@ class RegisterClientProtocol(QuicConnectionProtocol):
                 waiter.set_result(answer)
 
 
-async def main(configuration: QuicConfiguration) -> None:
+class SessionTicketStore:
+    """
+    Simple in-memory store for session tickets.
+    """
+
+    def __init__(self) -> None:
+        self.tickets: Dict[bytes, SessionTicket] = {}
+
+    def add(self, ticket: SessionTicket) -> None:
+        self.tickets[ticket.ticket] = ticket
+
+    def pop(self, label: bytes) -> Optional[SessionTicket]:
+        return self.tickets.pop(label, None)
+
+
+async def main() -> None:
     logger.debug(f"Connecting to {settings.CHANAGER_IP}:{settings.RLS_PORT}")
     if sys.argv[1] == "1":
+        configuration_register = QuicConfiguration(
+            alpn_protocols=["ch-register"],
+            is_client=True
+        )
+
+        configuration_register.load_verify_locations("app_quic/certs/pycacert.pem")
+        # configuration_register.verify_mode = ssl.CERT_NONE
+        
         async with connect(
             # settings.CHANAGER_IP,
             "localhost",
             settings.RLS_PORT,
-            configuration=configuration,
+            configuration=configuration_register,
             session_ticket_handler=save_session_ticket,
             create_protocol=RegisterClientProtocol,
         ) as client:
@@ -200,19 +264,37 @@ async def main(configuration: QuicConfiguration) -> None:
             logger.debug(f"{chanager=}")
             logger.info('Registration complete.')
 
+    configuration_cmd = QuicConfiguration(
+        alpn_protocols=["ch-cmd"],
+        is_client=False
+    )
+    configuration_cmd.load_cert_chain("app_quic/certs/ssl_cert.pem", "app_quic/certs/ssl_key.pem")
 
-if __name__ == '__main__':
-    configuration_register = QuicConfiguration(
-        alpn_protocols=["ch-register"],
-        is_client=True
+    print("ARE YOU WAITING?")
+    await serve(
+        # settings.CHANAGER_IP,
+        "localhost",
+        settings.CLIENT_CLS_PORT,
+        configuration=configuration_cmd,
+        create_protocol=CommandProtocol,
+        session_ticket_fetcher=SessionTicketStore.pop,
+        session_ticket_handler=SessionTicketStore.add,
+        retry=True
     )
 
-    configuration_register.load_verify_locations("app_quic/certs/pycacert.pem")
-    # configuration_register.verify_mode = ssl.CERT_NONE
+    loop = asyncio.get_running_loop()
+    # async with asyncio.TaskGroup() as task_group:
+        # task_group.create_task(command_manager(connection, loop))
+    loop.create_task(send_alert(loop))
 
+    await asyncio.Future()
+
+
+
+if __name__ == '__main__':
     try:        
         asyncio.run(
-            main(configuration=configuration_register)
+            main()
         )
     except KeyboardInterrupt:
         pass

@@ -7,11 +7,11 @@ import uuid
 from asyncio import AbstractEventLoop
 from math import floor
 import struct
-from typing import Dict, Optional
+from typing import Dict, Optional, cast
 from loguru import logger
 
 # Quic
-from aioquic.asyncio import QuicConnectionProtocol, serve
+from aioquic.asyncio import QuicConnectionProtocol, serve, connect
 from aioquic.quic.configuration import QuicConfiguration
 from aioquic.quic.events import QuicEvent, StreamDataReceived
 # from aioquic.quic.logger import QuicFileLogger
@@ -47,18 +47,50 @@ else:
         level='DEBUG'
     )
 
+
+def save_session_ticket(ticket):
+    """
+    Callback which is invoked by the TLS engine when a new session ticket
+    is received.
+    """
+    logger.info("New session ticket received")
+    if False:
+        with open(args.session_ticket, "wb") as fp:
+            pickle.dump(ticket, fp)
+
+
+class ClientProtocol(QuicConnectionProtocol):
+    def quic_event_received(self, event: QuicEvent):
+        if isinstance(event, StreamDataReceived):
+            # parse answer
+            length = struct.unpack("!H", bytes(event.data[:2]))[0]
+            answer = (event.data[2 : 2 + length]).decode()
+
+            # return answer
+            waiter = self._ack_waiter
+            self._ack_waiter = None
+            waiter.set_result(answer)
+
+
 clients: dict[str, "Client"] = {}
 
-
 class Client:
-    def __init__(self, id_, ip, cls_port, name=None):
+    def __init__(self, id_, ip, cls_port, name=None, *args, **kwargs):
+        # super().__init__(quic=None, *args, **kwargs)
         self.id_ = id_
         self.ip = ip
         self.cls_port = cls_port
         self.name = name
-        self.chc: socket.socket | None = None
+        self.chc: QuicConnectionProtocol | None = None
         self.retries = 1
         self.secs = 2
+
+        self.configuration = QuicConfiguration(
+            alpn_protocols=["ch-cmd"],
+            is_client=True
+        )
+        self.configuration.load_verify_locations("app_quic/certs/pycacert.pem")
+        self._ack_waiter: Optional[asyncio.Future[str]] = None
 
     def __repr__(self):
         base = f"Client<id: {self.id_}, (ip={self.ip!r}, cls_port: {self.cls_port})"
@@ -68,24 +100,54 @@ class Client:
             base += ">"
         return base
 
-    async def connect(self, loop):
-        chc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        chc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        chc.setblocking(False)
-        await loop.sock_connect(chc, (self.ip, self.cls_port))
-        logger.debug(f"Connection with {(self.ip, self.cls_port)} is established.")
-        self.chc = chc
+    async def command(self, command) -> str:
+        await self.send_data(command.encode())
 
-    async def health_check(self, loop: AbstractEventLoop):
+        if command != Commands.health_check:
+            waiter = self._loop.create_future()
+            self._ack_waiter = waiter
+            self.transmit()
+
+            return asyncio.shield(waiter)
+        return ""
+
+    async def connect(self):
+        chc = connect(
+            # self.ip,
+            "localhost",
+            self.cls_port,
+            configuration=self.configuration,
+            session_ticket_handler=save_session_ticket,
+            create_protocol=ClientProtocol
+        )
+
+        logger.debug(f"Connection with {(self.ip, self.cls_port)} is established.")
+        self.chc = cast(Client, chc)
+
+    async def send_data(self, data: bytes):
+        async with connect(
+            "localhost",
+            settings.CLIENT_CLS_PORT,
+            configuration=self.configuration,
+            session_ticket_handler=save_session_ticket,
+            create_protocol=ClientProtocol
+        ) as client:
+            stream_id = client._quic.get_next_available_stream_id()
+            client._quic.send_stream_data(stream_id, data, end_stream=True)
+            client.transmit()
+        
+        logger.debug(f"Data sent on stream {stream_id}: {data}")
+
+    async def health_check(self):
         logger.debug(f"HealthCheck for {(self.ip, self.cls_port)} is running...")
         while True:
             await asyncio.sleep(settings.CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL)
             try:
-                await loop.sock_sendall(self.chc, Commands.health_check.encode())
+                await self.command(Commands.health_check)
             except (ConnectionRefusedError, BrokenPipeError):
                 while True:
                     try:
-                        await self.connect(loop)
+                        self.connect()
                     except ConnectionRefusedError:
                         logger.warning(f"{(self.ip, self.cls_port)} is down")
                         logger.debug(
@@ -100,6 +162,17 @@ class Client:
                         self.retries = 1
                         self.secs = 2
                         break
+
+    def quic_event_received(self, event: QuicEvent):
+        if isinstance(event, StreamDataReceived):
+            # parse answer
+            length = struct.unpack("!H", bytes(event.data[:2]))[0]
+            answer = (event.data[2 : 2 + length]).decode()
+
+            # return answer
+            waiter = self._ack_waiter
+            self._ack_waiter = None
+            waiter.set_result(answer)
 
 
 async def admin_commands(connection: socket.socket, loop):
@@ -143,15 +216,13 @@ async def admin_commands(connection: socket.socket, loop):
                 case Commands.cpu:
                     logger.debug('`cpu` was chosen.')
                     client = clients[id_[0]]
-                    await loop.sock_sendall(client.chc, Commands.cpu.encode())
-                    report = (await loop.sock_recv(client.chc, 1024)).decode().strip()
+                    report = await client.command(Commands.cpu.encode())
                     await loop.sock_sendall(connection, f'CPU: {report}\n'.encode())
 
                 case Commands.memory:
                     logger.debug('`memory` was chosen.')
                     client = clients[id_[0]]
-                    await loop.sock_sendall(client.chc, Commands.memory.encode())
-                    report = (await loop.sock_recv(client.chc, 1024)).decode().strip()
+                    report = await client.send_data(Commands.memory.encode())
                     await loop.sock_sendall(connection, f'Memory: {report}\n'.encode())
 
                 case Commands.profile:
@@ -162,23 +233,13 @@ async def admin_commands(connection: socket.socket, loop):
                 case Commands.processes:
                     logger.debug('`processes` was chosen.')
                     client = clients[id_[0]]
-                    await loop.sock_sendall(client.chc, Commands.processes.encode())
-                    report = (await loop.sock_recv(client.chc, 1024)).decode().strip()
+                    report = await client.send_data(Commands.processes.encode())
                     await loop.sock_sendall(connection, f'Running Processes: {report}\n'.encode())
 
         except KeyError:
             await loop.sock_sendall(connection, b'Wrong client key!\n')
         except IndexError:
             await loop.sock_sendall(connection, b'Key not provided!\n')
-
-
-async def listen_for_registration(server_socket, loop):
-    logger.info("Chanager is listening for registrations...")
-    while True:
-        connection, address = await loop.sock_accept(server_socket)
-        connection.setblocking(False)
-        logger.info(f"Manager got a registration from {address}")
-        loop.create_task(register(connection, loop, address))
 
 
 async def listen_for_admin(server_socket, loop):
@@ -223,17 +284,19 @@ class RegistrationProtocol(QuicConnectionProtocol):
             response_length = struct.pack("!H", len(response))
             self._quic.send_stream_data(event.stream_id, response_length + response, end_stream=True)
 
-            self._quic.close(error_code=0)
-            self._transport.close()
+            # self._quic.close(error_code=0)
+            # self._transport.close()
             logger.debug(f"Registration for {client} is done.")
 
+            # asyncio.sleep(settings.CHANAGER_WAIT_TO_CONNECT)
+            logger.debug(f"Trying to connect to: {(client.ip, client.cls_port)}")
 
-            print(clients)
-            # await asyncio.sleep(settings.CHANAGER_WAIT_TO_CONNECT)
-            # logger.debug(f"Trying to connect to: {(client.ip, client.cls_port)}")
+            loop = asyncio.get_running_loop()
 
-            # await client.connect(loop)
-            # loop.create_task(client.health_check(loop))
+            # loop.create_task(client.connect())
+            import time
+            time.sleep(5)
+            loop.create_task(client.health_check())
 
 
 class SessionTicketStore:
@@ -251,7 +314,7 @@ class SessionTicketStore:
         return self.tickets.pop(label, None)
 
 
-async def main(
+async def registeration(
     configuration: QuicConfiguration,
     session_ticket_store: SessionTicketStore,
 ) -> None:
@@ -272,7 +335,7 @@ async def main(
     await asyncio.Future()
 
 
-if __name__ == '__main__':
+async def main():
     configuration_register = QuicConfiguration(
         alpn_protocols=["ch-register"],
         is_client=False
@@ -280,13 +343,31 @@ if __name__ == '__main__':
 
     configuration_register.load_cert_chain("app_quic/certs/ssl_cert.pem", "app_quic/certs/ssl_key.pem")
 
-    try:        
-        asyncio.run(
-            main(
-                configuration=configuration_register,
-                session_ticket_store=SessionTicketStore()
-            )
-        )
+    cmd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    cmd.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    cmd.setblocking(False)
+    cmd.bind((settings.CHANAGER_IP, settings.CMD_PORT))
+    cmd.listen()
+
+    loop = asyncio.get_running_loop()
+
+    logger.info(f'Chanager UDP socket [{settings.ALS_PORT}] is listening...')
+    transport, _ = await loop.create_datagram_endpoint(
+        EchoServerProtocol,  # noqa
+        local_addr=(settings.CHANAGER_IP, settings.ALS_PORT)
+    )
+
+    async with asyncio.TaskGroup() as task_group:
+        task_group.create_task(registeration(
+            configuration=configuration_register,
+            session_ticket_store=SessionTicketStore()
+        ))
+        task_group.create_task(listen_for_admin(cmd, loop))
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
     except KeyboardInterrupt:
         pass
     finally:
