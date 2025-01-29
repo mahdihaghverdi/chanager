@@ -1,0 +1,211 @@
+services:
+    chanager-rest:
+        container_name: chanager-rest
+        build:
+            context: .
+            dockerfile: Dockerfile-rest
+        environment:
+            DEBUG: False
+            API_VERSION: "v1"
+            CHANAGER_IP: "chanager-rest"
+            CHANAGER_PORT: 7000
+            CHANAGER_TITLE: "Chanager Main Service"
+            CHANAGER_VERSION: "0.1.0"
+        ports:
+          - "7000:7000"
+        networks:
+            rest-network:
+
+        command: [
+            "uvicorn",
+            "chmng_app:app",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "7000"
+        ]
+
+    client-5:
+        container_name: client-5
+        build:
+            context: .
+            dockerfile: Dockerfile-rest
+        environment:
+            DEBUG: False
+            API_VERSION: "v1"
+            CHANAGER_IP: "chanager-rest"
+            CHANAGER_PORT: 7000
+            CLIENT_TITLE: "client-5"
+            CLIENT_VERSION: "0.1.0"
+            CLIENT_IP: "client-5"
+            CLIENT_PORT: 7005
+        ports:
+            - "7005:7005"
+        networks:
+            rest-network:
+
+        command: [
+            "uvicorn",
+            "client_app:app",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "7005"
+        ]
+        depends_on:
+            - chanager-rest
+
+    client-10:
+        container_name: client-10
+        build:
+            context: .
+            dockerfile: Dockerfile-rest
+        environment:
+            DEBUG: False
+            API_VERSION: "v1"
+            CHANAGER_IP: "chanager-rest"
+            CHANAGER_PORT: 7000
+            CLIENT_TITLE: "client-10"
+            CLIENT_VERSION: "0.1.0"
+            CLIENT_IP: "client-10"
+            CLIENT_PORT: 7010
+        ports:
+            - "7010:7010"
+        networks:
+            rest-network:
+
+        command: [
+            "uvicorn",
+            "client_app:app",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "7010"
+        ]
+        depends_on:
+            - chanager-rest
+
+    client-15:
+        container_name: client-15
+        build:
+            context: .
+            dockerfile: Dockerfile-rest
+        environment:
+            DEBUG: False
+            API_VERSION: "v1"
+            CHANAGER_IP: "chanager-rest"
+            CHANAGER_PORT: 7000
+            CLIENT_TITLE: "client-15"
+            CLIENT_VERSION: "0.1.0"
+            CLIENT_IP: "client-15"
+            CLIENT_PORT: 7015
+        ports:
+            - "7015:7015"
+        networks:
+            rest-network:
+
+        command: [
+            "uvicorn",
+            "client_app:app",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "7015"
+        ]
+        depends_on:
+            - chanager-rest
+
+    client-20:
+        container_name: client-20
+        build:
+            context: .
+            dockerfile: Dockerfile-rest
+        environment:
+            DEBUG: False
+            API_VERSION: "v1"
+            CHANAGER_IP: "chanager-rest"
+            CHANAGER_PORT: 7000
+            CLIENT_TITLE: "client-20"
+            CLIENT_VERSION: "0.1.0"
+            CLIENT_IP: "client-20"
+            CLIENT_PORT: 7020
+        ports:
+            - "7020:7020"
+        networks:
+            rest-network:
+
+        command: [
+            "uvicorn",
+            "client_app:app",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "7020"
+        ]
+        depends_on:
+            - chanager-rest
+
+
+    client-25:
+        container_name: client-25
+        build:
+            context: .
+            dockerfile: Dockerfile-rest
+        environment:
+            DEBUG: False
+            API_VERSION: "v1"
+            CHANAGER_IP: "chanager-rest"
+            CHANAGER_PORT: 7000
+            CLIENT_TITLE: "client-25"
+            CLIENT_VERSION: "0.1.0"
+            CLIENT_IP: "client-25"
+            CLIENT_PORT: 7025
+        ports:
+            - "7025:7025"
+        networks:
+            rest-network:
+
+        command: [
+            "uvicorn",
+            "client_app:app",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "7025"
+        ]
+        depends_on:
+            - chanager-rest
+
+    client-30:
+        container_name: client-30
+        build:
+            context: .
+            dockerfile: Dockerfile-rest
+        environment:
+            DEBUG: False
+            API_VERSION: "v1"
+            CHANAGER_IP: "chanager-rest"
+            CHANAGER_PORT: 7000
+            CLIENT_TITLE: "client-30"
+            CLIENT_VERSION: "0.1.0"
+            CLIENT_IP: "client-30"
+            CLIENT_PORT: 7030
+        ports:
+            - "7030:7030"
+        networks:
+            rest-network:
+
+        command: [
+            "uvicorn",
+            "client_app:app",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "7030"
+        ]
+        depends_on:
+            - chanager-rest
+
+networks:
+    rest-network:
+       driver: bridge

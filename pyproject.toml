@@ -12,6 +12,12 @@ loguru = "^0.7.3"
 psutil = "^6.1.1"
 
 
+[tool.poetry.group.rest.dependencies]
+fastapi = {version = "^0.115.7", extras = ["all"]}
+aiohttp = "^3.11.11"
+psutil = "^6.1.1"
+loguru = "^0.7.3"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,278 @@
+services:
+    chanager:
+        container_name: chanager
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment:
+            CHANAGER_IP: "172.20.1.1" 
+            CHANAGER_WAIT_TO_CONNECT: 2
+            CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL: 5
+            RLS_PORT: 8000
+            ALS_PORT: 1300
+            CMD_PORT: 8001
+            LOGLEVEL: "info"
+        ports:
+          - "8000:8001"
+        networks:
+            static-network:
+                ipv4_address: 172.20.1.1
+        command: ["python", "app/chmng.py"]
+
+
+    client-5:
+        container_name: client-5
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment:
+            CHANAGER_IP: "172.20.1.1"
+            CHANAGER_WAIT_TO_CONNECT: 2
+            CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL: 5
+            RLS_PORT: 8000
+            ALS_PORT: 1300
+            CMD_PORT: 8001
+            CLIENT_NAME: "Client-5"
+            CLIENT_CLS_PORT: 8000
+            CLIENT_IP: "172.20.1.5"
+            CLIENT_ALERT_INTERVAL: 5
+            LOGLEVEL: "info"
+        networks:
+            static-network:
+                ipv4_address: 172.20.1.5
+        command: ["python", "app/client.py", "1"]
+        depends_on:
+            - chanager
+
+
+    client-10:
+        container_name: client-10
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment:
+            CHANAGER_IP: "172.20.1.1"
+            CHANAGER_WAIT_TO_CONNECT: 2
+            CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL: 5
+            RLS_PORT: 8000
+            ALS_PORT: 1300
+            CMD_PORT: 8001
+            CLIENT_NAME: "Client-10"
+            CLIENT_CLS_PORT: 8000
+            CLIENT_IP: "172.20.1.10"
+            CLIENT_ALERT_INTERVAL: 5
+            LOGLEVEL: "info"
+        networks:
+            static-network:
+                ipv4_address: 172.20.1.10
+        command: ["python", "app/client.py", "1"]
+        depends_on:
+            - chanager
+
+
+    client-15:
+        container_name: client-15
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment:
+            CHANAGER_IP: "172.20.1.1"
+            CHANAGER_WAIT_TO_CONNECT: 2
+            CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL: 5
+            RLS_PORT: 8000
+            ALS_PORT: 1300
+            CMD_PORT: 8001
+            CLIENT_NAME: "Client-15"
+            CLIENT_CLS_PORT: 8000
+            CLIENT_IP: "172.20.1.15"
+            CLIENT_ALERT_INTERVAL: 5
+            LOGLEVEL: "info"
+        networks:
+            static-network:
+                ipv4_address: 172.20.1.15
+        command: ["python", "app/client.py", "1"]
+        depends_on:
+            - chanager
+
+
+    client-20:
+        container_name: client-20
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment:
+            CHANAGER_IP: "172.20.1.1"
+            CHANAGER_WAIT_TO_CONNECT: 2
+            CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL: 5
+            RLS_PORT: 8000
+            ALS_PORT: 1300
+            CMD_PORT: 8001
+            CLIENT_NAME: "Client-20"
+            CLIENT_CLS_PORT: 8000
+            CLIENT_IP: "172.20.1.20"
+            CLIENT_ALERT_INTERVAL: 5
+            LOGLEVEL: "info"
+        networks:
+            static-network:
+                ipv4_address: 172.20.1.20
+        command: ["python", "app/client.py", "1"]
+        depends_on:
+            - chanager
+
+
+    client-25:
+        container_name: client-25
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment:
+            CHANAGER_IP: "172.20.1.1"
+            CHANAGER_WAIT_TO_CONNECT: 2
+            CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL: 5
+            RLS_PORT: 8000
+            ALS_PORT: 1300
+            CMD_PORT: 8001
+            CLIENT_NAME: "Client-25"
+            CLIENT_CLS_PORT: 8000
+            CLIENT_IP: "172.20.1.25"
+            CLIENT_ALERT_INTERVAL: 5
+            LOGLEVEL: "info"
+        networks:
+            static-network:
+                ipv4_address: 172.20.1.25
+        command: ["python", "app/client.py", "1"]
+        depends_on:
+            - chanager
+
+
+    client-30:
+        container_name: client-30
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment:
+            CHANAGER_IP: "172.20.1.1"
+            CHANAGER_WAIT_TO_CONNECT: 2
+            CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL: 5
+            RLS_PORT: 8000
+            ALS_PORT: 1300
+            CMD_PORT: 8001
+            CLIENT_NAME: "Client-30"
+            CLIENT_CLS_PORT: 8000
+            CLIENT_IP: "172.20.1.30"
+            CLIENT_ALERT_INTERVAL: 5
+            LOGLEVEL: "info"
+        networks:
+            static-network:
+                ipv4_address: 172.20.1.30
+        command: ["python", "app/client.py", "1"]
+        depends_on:
+            - chanager
+
+
+    client-35:
+        container_name: client-35
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment:
+            CHANAGER_IP: "172.20.1.1"
+            CHANAGER_WAIT_TO_CONNECT: 2
+            CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL: 5
+            RLS_PORT: 8000
+            ALS_PORT: 1300
+            CMD_PORT: 8001
+            CLIENT_NAME: "Client-35"
+            CLIENT_CLS_PORT: 8000
+            CLIENT_IP: "172.20.1.35"
+            CLIENT_ALERT_INTERVAL: 5
+            LOGLEVEL: "info"
+        networks:
+            static-network:
+                ipv4_address: 172.20.1.35
+        command: ["python", "app/client.py", "1"]
+        depends_on:
+            - chanager
+
+
+    client-40:
+        container_name: client-40
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment:
+            CHANAGER_IP: "172.20.1.1"
+            CHANAGER_WAIT_TO_CONNECT: 2
+            CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL: 5
+            RLS_PORT: 8000
+            ALS_PORT: 1300
+            CMD_PORT: 8001
+            CLIENT_NAME: "Client-40"
+            CLIENT_CLS_PORT: 8000
+            CLIENT_IP: "172.20.1.40"
+            CLIENT_ALERT_INTERVAL: 5
+            LOGLEVEL: "info"
+        networks:
+            static-network:
+                ipv4_address: 172.20.1.40
+        command: ["python", "app/client.py", "1"]
+        depends_on:
+            - chanager
+
+
+    client-45:
+        container_name: client-45
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment:
+            CHANAGER_IP: "172.20.1.1"
+            CHANAGER_WAIT_TO_CONNECT: 2
+            CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL: 5
+            RLS_PORT: 8000
+            ALS_PORT: 1300
+            CMD_PORT: 8001
+            CLIENT_NAME: "Client-45"
+            CLIENT_CLS_PORT: 8000
+            CLIENT_IP: "172.20.1.45"
+            CLIENT_ALERT_INTERVAL: 5
+            LOGLEVEL: "info"
+        networks:
+            static-network:
+                ipv4_address: 172.20.1.45
+        command: ["python", "app/client.py", "1"]
+        depends_on:
+            - chanager
+
+
+    client-50:
+        container_name: client-50
+        build:
+            context: .
+            dockerfile: Dockerfile
+        environment:
+            CHANAGER_IP: "172.20.1.1"
+            CHANAGER_WAIT_TO_CONNECT: 2
+            CHANAGER_CLIENT_HEALTH_CHECK_INTERVAL: 5
+            RLS_PORT: 8000
+            ALS_PORT: 1300
+            CMD_PORT: 8001
+            CLIENT_NAME: "Client-50"
+            CLIENT_CLS_PORT: 8000
+            CLIENT_IP: "172.20.1.50"
+            CLIENT_ALERT_INTERVAL: 5
+            LOGLEVEL: "info"
+        networks:
+            static-network:
+                ipv4_address: 172.20.1.50
+        command: ["python", "app/client.py", "1"]
+        depends_on:
+            - chanager
+
+
+networks:
+    static-network:
+       driver: bridge
+       ipam:
+           config:
+               - subnet: 172.20.0.0/16

@@ -23,7 +23,7 @@ if settings.LOGLEVEL == LogLevels.INFO:
             "| <c><b>{level:<10}</b></c> "
             "| <b>{message}</b>"
         ),
-        level='INFO'
+        level="INFO",
     )
 else:
     logger.add(
@@ -35,7 +35,7 @@ else:
             "| <y>{file}</y>:<y>{function}</y>:<y>{line}</y> "
             "- <bold>{message}</bold>"
         ),
-        level='DEBUG'
+        level="DEBUG",
     )
 
 clients: dict[str, "Client"] = {}
@@ -87,7 +87,9 @@ class Client:
                         self.retries += 1
                         self.secs = floor(self.secs * 1.5)
                     else:
-                        logger.info(f'Connection to {(self.ip, self.cls_port)} reestablished')
+                        logger.info(
+                            f"Connection to {(self.ip, self.cls_port)} reestablished"
+                        )
                         self.retries = 1
                         self.secs = 2
                         break
@@ -125,7 +127,7 @@ async def admin_commands(connection: socket.socket, loop):
     await loop.sock_sendall(
         connection,
         textwrap.dedent(
-            '''\
+            """\
                         You can choose from these commands:
 
                         list
@@ -133,8 +135,8 @@ async def admin_commands(connection: socket.socket, loop):
                         memory ID
                         profile ID
                         processes ID
-                        '''
-        ).encode()
+                        """
+        ).encode(),
     )
     while data := await loop.sock_recv(connection, 1024):
         await asyncio.sleep(0.001)
@@ -146,49 +148,51 @@ async def admin_commands(connection: socket.socket, loop):
         try:
             match command:
                 case Commands.list:
-                    logger.debug('`list` was chosen.')
+                    logger.debug("`list` was chosen.")
                     await loop.sock_sendall(
                         connection,
                         textwrap.dedent(
-                            f'''\
+                            f"""\
                         List of all registered clients
                         ------------------------------
                         
                         {'\n'.join(f'{ind}: {key}' for ind, key in zip(map(str, range(1, len(clients) + 1)), clients))}
-                        '''
-                        ).encode()
+                        """
+                        ).encode(),
                     )
 
                 case Commands.cpu:
-                    logger.debug('`cpu` was chosen.')
+                    logger.debug("`cpu` was chosen.")
                     client = clients[id_[0]]
                     await loop.sock_sendall(client.chc, Commands.cpu.encode())
                     report = (await loop.sock_recv(client.chc, 1024)).decode().strip()
-                    await loop.sock_sendall(connection, f'CPU: {report}\n'.encode())
+                    await loop.sock_sendall(connection, f"CPU: {report}\n".encode())
 
                 case Commands.memory:
-                    logger.debug('`memory` was chosen.')
+                    logger.debug("`memory` was chosen.")
                     client = clients[id_[0]]
                     await loop.sock_sendall(client.chc, Commands.memory.encode())
                     report = (await loop.sock_recv(client.chc, 1024)).decode().strip()
-                    await loop.sock_sendall(connection, f'Memory: {report}\n'.encode())
+                    await loop.sock_sendall(connection, f"Memory: {report}\n".encode())
 
                 case Commands.profile:
-                    logger.debug('`profile` was chosen.')
+                    logger.debug("`profile` was chosen.")
                     client = clients[id_[0]]
-                    await loop.sock_sendall(connection, f'Profile: {client}\n'.encode())
+                    await loop.sock_sendall(connection, f"Profile: {client}\n".encode())
 
                 case Commands.processes:
-                    logger.debug('`processes` was chosen.')
+                    logger.debug("`processes` was chosen.")
                     client = clients[id_[0]]
                     await loop.sock_sendall(client.chc, Commands.processes.encode())
                     report = (await loop.sock_recv(client.chc, 1024)).decode().strip()
-                    await loop.sock_sendall(connection, f'Running Processes: {report}\n'.encode())
+                    await loop.sock_sendall(
+                        connection, f"Running Processes: {report}\n".encode()
+                    )
 
         except KeyError:
-            await loop.sock_sendall(connection, b'Wrong client key!\n')
+            await loop.sock_sendall(connection, b"Wrong client key!\n")
         except IndexError:
-            await loop.sock_sendall(connection, b'Key not provided!\n')
+            await loop.sock_sendall(connection, b"Key not provided!\n")
 
 
 async def listen_for_registration(server_socket, loop):
@@ -218,9 +222,9 @@ class EchoServerProtocol:
 
     def datagram_received(self, data, address):  # noqa
         message = json.loads(data.decode().strip())
-        cid = message['id']
-        alert_msg = message['alert']
-        logger.critical(f'ALERT: <ID:{cid}> said: <{alert_msg!r}> (Address: {address})')
+        cid = message["id"]
+        alert_msg = message["alert"]
+        logger.critical(f"ALERT: <ID:{cid}> said: <{alert_msg!r}> (Address: {address})")
 
 
 async def main():
@@ -241,10 +245,10 @@ async def main():
 
     loop = asyncio.get_running_loop()
 
-    logger.info(f'Chanager UDP socket [{settings.ALS_PORT}] is listening...')
+    logger.info(f"Chanager UDP socket [{settings.ALS_PORT}] is listening...")
     transport, _ = await loop.create_datagram_endpoint(
         EchoServerProtocol,  # noqa
-        local_addr=(settings.CHANAGER_IP, settings.ALS_PORT)
+        local_addr=(settings.CHANAGER_IP, settings.ALS_PORT),
     )
 
     async with asyncio.TaskGroup() as task_group:
@@ -257,4 +261,4 @@ try:
 except KeyboardInterrupt:
     pass
 finally:
-    logger.info('Shutting down the server...')
+    logger.info("Shutting down the server...")
